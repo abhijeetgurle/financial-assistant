@@ -2,7 +2,9 @@ import io
 import pandas as pd
 from typing import Any
 
-REQUIRED_COLUMNS = {"trade_date", "tradingsymbol", "trade_type", "quantity", "price"}
+REQUIRED_COLUMNS_BASE = {"trade_date", "trade_type", "quantity", "price"}
+# Zerodha exports use either 'tradingsymbol' or 'symbol' depending on the report version
+SYMBOL_COLUMN_ALIASES = ("tradingsymbol", "symbol")
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 
 ZERODHA_ERROR = (
@@ -27,8 +29,9 @@ def parse_zerodha_csv(content: bytes) -> tuple[list[dict[str, Any]], list[str], 
     # Normalize column names
     df.columns = df.columns.str.strip().str.lower()
 
-    missing = REQUIRED_COLUMNS - set(df.columns)
-    if missing:
+    # Detect which symbol column name this export uses
+    symbol_col = next((c for c in SYMBOL_COLUMN_ALIASES if c in df.columns), None)
+    if symbol_col is None or not REQUIRED_COLUMNS_BASE.issubset(df.columns):
         raise ValueError(ZERODHA_ERROR)
 
     if df.empty:
@@ -42,7 +45,7 @@ def parse_zerodha_csv(content: bytes) -> tuple[list[dict[str, Any]], list[str], 
         row_num = int(idx) + 2  # 1-based, account for header row
 
         # --- symbol ---
-        symbol = str(row.get("tradingsymbol", "")).strip().upper()
+        symbol = str(row.get(symbol_col, "")).strip().upper()
         if not symbol:
             warnings.append(f"Row {row_num}: empty symbol, skipped.")
             continue
