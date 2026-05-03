@@ -13,8 +13,10 @@ Upload your Zerodha tradebook and get:
 
 - **Behavioral pattern detection** — panic selling, overtrading, concentration risk
 - **Plain-language portfolio explanation** — "60% of your portfolio is in one stock"
-- **Risk summary** — concentration, volatility exposure, holding period analysis
+- **AI coaching narrative** — Claude explains the psychology behind your trading patterns
 - **Actionable suggestions** — without giving financial advice
+- **Shareable reports** — generate a link to share with a CA or advisor
+- **PDF export** — save a clean printable version of your report
 
 ---
 
@@ -91,6 +93,8 @@ Enter individual trades directly — symbol, type (buy/sell), price, quantity, a
 | `POST` | `/ingest/manual` | Submit a single transaction as JSON |
 | `POST` | `/analyze` | Analyze a list of `NormalizedTransaction` objects |
 | `POST` | `/insights` | Generate Claude AI behavioral insight from `AnalysisResult` |
+| `POST` | `/report/save` | Persist a report and return a shareable ID |
+| `GET` | `/report/{id}` | Fetch a previously saved report |
 
 Both ingest endpoints return the same `IngestResponse` shape:
 
@@ -141,6 +145,14 @@ The `/insights` endpoint accepts the full `AnalysisResult` and returns a 150–2
 
 Returns `503` if `ANTHROPIC_API_KEY` is not configured. The frontend renders this section above the stat cards with a loading skeleton while Claude responds, and hides it entirely on error.
 
+`POST /report/save` accepts `{ result: AnalysisResult, insight?: string }` and returns:
+
+```json
+{ "id": "uuid4", "url": "/report/{id}" }
+```
+
+Reports are stored as JSON files in `backend/data/reports/` and survive server restarts. `GET /report/{id}` returns the full `SavedReport` or 404.
+
 ---
 
 ## Environment Variables
@@ -176,26 +188,31 @@ financial-assistant/
 │   └── app/
 │       ├── models/
 │       │   ├── transaction.py     # NormalizedTransaction, IngestResponse (source of truth)
-│       │   └── analysis.py        # BehaviorFlag, PortfolioMetrics, AnalysisResult
+│       │   ├── analysis.py        # BehaviorFlag, PortfolioMetrics, AnalysisResult
+│       │   └── report.py          # SavedReport, SaveReportRequest
 │       ├── routers/
 │       │   ├── ingest.py          # /ingest/csv and /ingest/manual
 │       │   ├── analyze.py         # /analyze
-│       │   └── insights.py        # /insights
-│       └── services/
-│           ├── csv_parser.py      # Zerodha tradebook CSV parser
-│           ├── normalizer.py      # FIFO gain/loss matching
-│           ├── analyzer.py        # Rule-based behavior analysis engine
-│           └── insights.py        # Claude API call + prompt formatting
+│       │   ├── insights.py        # /insights
+│       │   └── report.py          # /report/save and /report/{id}
+│       ├── services/
+│       │   ├── csv_parser.py      # Zerodha tradebook CSV parser
+│       │   ├── normalizer.py      # FIFO gain/loss matching
+│       │   ├── analyzer.py        # Rule-based behavior analysis engine
+│       │   └── insights.py        # Claude API call + prompt formatting
+│       └── data/reports/          # Saved report JSON files (gitignored)
 └── frontend/
     └── src/
         ├── app/
         │   ├── upload/page.tsx    # Upload page
-        │   └── analysis/page.tsx  # Analysis results page
+        │   ├── analysis/page.tsx  # Analysis results + Share/PDF buttons
+        │   └── report/[id]/       # Read-only shared report view
         ├── components/            # UploadTabs, CsvUpload, ManualEntryForm, TransactionTable, AnalysisReport
         ├── lib/api.ts             # Typed fetch wrappers
         └── types/
             ├── transaction.ts     # TypeScript mirror of transaction schema
-            └── analysis.ts        # TypeScript mirror of analysis schema
+            ├── analysis.ts        # TypeScript mirror of analysis schema
+            └── report.ts          # TypeScript mirror of report schema
 ```
 
 ---
@@ -205,4 +222,4 @@ financial-assistant/
 - [x] Phase 1 — Data ingestion (Zerodha CSV + manual entry, FIFO normalization)
 - [x] Phase 2 — Rule-based behavior analysis engine
 - [x] Phase 3 — Claude API integration for plain-language insights
-- [ ] Phase 4 — Analysis report UI and shareable results
+- [x] Phase 4 — Analysis report UI and shareable results
