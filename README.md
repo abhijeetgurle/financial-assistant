@@ -88,6 +88,7 @@ Enter individual trades directly — symbol, type (buy/sell), price, quantity, a
 | `GET` | `/health` | Liveness check |
 | `POST` | `/ingest/csv` | Upload Zerodha tradebook CSV |
 | `POST` | `/ingest/manual` | Submit a single transaction as JSON |
+| `POST` | `/analyze` | Analyze a list of `NormalizedTransaction` objects |
 
 Both ingest endpoints return the same `IngestResponse` shape:
 
@@ -102,6 +103,45 @@ Both ingest endpoints return the same `IngestResponse` shape:
 
 Each transaction includes `gain_loss` and `holding_days` computed via FIFO matching when a matching buy exists in the same batch.
 
+The `/analyze` endpoint accepts the `transactions` array from `IngestResponse` and returns:
+
+```json
+{
+  "flags": [
+    {
+      "name": "loss_rate",
+      "severity": "medium",
+      "title": "High Loss Rate",
+      "description": "...",
+      "evidence": ["..."]
+    }
+  ],
+  "metrics": {
+    "realized_pnl": 5042.5,
+    "win_rate": 0.375,
+    "avg_holding_days": 183,
+    "total_trades": 44,
+    "unique_symbols": 12,
+    "top_symbol": "GOLDBEES",
+    "top_symbol_pct": 0.42
+  },
+  "suggestions": ["..."]
+}
+```
+
+---
+
+## Behavior Analysis Rules
+
+The engine detects four behavioral patterns:
+
+| Flag | Trigger |
+|---|---|
+| **Panic Selling** | HIGH if >30% of matched sells are short-term losses; MEDIUM if any sell was held <7 days at a loss |
+| **Overtrading** | HIGH if average holding period <30 days; MEDIUM if <90 days |
+| **Concentration Risk** | HIGH if one symbol is >60% of total buy value; MEDIUM if >40% |
+| **High Loss Rate** | MEDIUM if win rate <40% |
+
 ---
 
 ## Project Structure
@@ -112,17 +152,26 @@ financial-assistant/
 │   ├── main.py                    # FastAPI app, CORS, health endpoint
 │   ├── requirements.txt
 │   └── app/
-│       ├── models/transaction.py  # Pydantic schema (source of truth)
-│       ├── routers/ingest.py      # /ingest/csv and /ingest/manual
+│       ├── models/
+│       │   ├── transaction.py     # NormalizedTransaction, IngestResponse (source of truth)
+│       │   └── analysis.py        # BehaviorFlag, PortfolioMetrics, AnalysisResult
+│       ├── routers/
+│       │   ├── ingest.py          # /ingest/csv and /ingest/manual
+│       │   └── analyze.py         # /analyze
 │       └── services/
 │           ├── csv_parser.py      # Zerodha tradebook CSV parser
-│           └── normalizer.py      # FIFO gain/loss matching
+│           ├── normalizer.py      # FIFO gain/loss matching
+│           └── analyzer.py        # Rule-based behavior analysis engine
 └── frontend/
     └── src/
-        ├── app/upload/page.tsx    # Main upload page
-        ├── components/            # UploadTabs, CsvUpload, ManualEntryForm, TransactionTable
+        ├── app/
+        │   ├── upload/page.tsx    # Upload page
+        │   └── analysis/page.tsx  # Analysis results page
+        ├── components/            # UploadTabs, CsvUpload, ManualEntryForm, TransactionTable, AnalysisReport
         ├── lib/api.ts             # Typed fetch wrappers
-        └── types/transaction.ts   # TypeScript mirror of backend schema
+        └── types/
+            ├── transaction.ts     # TypeScript mirror of transaction schema
+            └── analysis.ts        # TypeScript mirror of analysis schema
 ```
 
 ---
@@ -130,6 +179,6 @@ financial-assistant/
 ## Roadmap
 
 - [x] Phase 1 — Data ingestion (Zerodha CSV + manual entry, FIFO normalization)
-- [ ] Phase 2 — Rule-based behavior analysis engine
+- [x] Phase 2 — Rule-based behavior analysis engine
 - [ ] Phase 3 — Claude API integration for plain-language insights
 - [ ] Phase 4 — Analysis report UI and shareable results
