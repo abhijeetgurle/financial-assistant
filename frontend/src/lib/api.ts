@@ -1,4 +1,5 @@
-import { IngestResponse, ManualEntryPayload } from "@/types/transaction";
+import { IngestResponse, ManualEntryPayload, NormalizedTransaction } from "@/types/transaction";
+import { AnalysisResult } from "@/types/analysis";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -35,6 +36,15 @@ export async function postManualEntry(payload: ManualEntryPayload): Promise<Inge
     body: JSON.stringify(payload),
   });
   return handleResponse<IngestResponse>(res);
+}
+
+export async function postAnalyze(transactions: NormalizedTransaction[]): Promise<AnalysisResult> {
+  const res = await fetch(`${BASE}/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(transactions),
+  });
+  return handleResponse<AnalysisResult>(res);
 }
 
 export async function healthCheck(): Promise<{ status: string }> {
