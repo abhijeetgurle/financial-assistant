@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 
-from app.routers import ingest, analyze, insights
+from app.routers import ingest, analyze, insights, report
 
 load_dotenv()
 
@@ -22,6 +22,7 @@ app.add_middleware(
 app.include_router(ingest.router)
 app.include_router(analyze.router)
 app.include_router(insights.router)
+app.include_router(report.router)
 
 
 @app.get("/health")

@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IngestResponse } from "@/types/transaction";
 import { AnalysisResult } from "@/types/analysis";
-import { postAnalyze, postInsights, ApiError } from "@/lib/api";
+import { postAnalyze, postInsights, saveReport, ApiError } from "@/lib/api";
 import AnalysisReport from "@/components/AnalysisReport";
 
 type Status = "loading" | "success" | "error";
 type InsightStatus = "loading" | "ready" | "unavailable";
+type ShareStatus = "idle" | "copying" | "copied" | "error";
 
 export default function AnalysisPage() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function AnalysisPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [insight, setInsight] = useState<string | null>(null);
   const [insightStatus, setInsightStatus] = useState<InsightStatus>("loading");
+  const [shareStatus, setShareStatus] = useState<ShareStatus>("idle");
 
   useEffect(() => {
     const raw = sessionStorage.getItem("transactions");
@@ -50,6 +52,21 @@ export default function AnalysisPage() {
       });
   }, [router]);
 
+  async function handleShare() {
+    if (!result || shareStatus === "copying") return;
+    setShareStatus("copying");
+    try {
+      const { id } = await saveReport({ result, insight });
+      const url = `${window.location.origin}/report/${id}`;
+      await navigator.clipboard.writeText(url);
+      setShareStatus("copied");
+      setTimeout(() => setShareStatus("idle"), 2000);
+    } catch {
+      setShareStatus("error");
+      setTimeout(() => setShareStatus("idle"), 2000);
+    }
+  }
+
   if (status === "loading") {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -74,19 +91,34 @@ export default function AnalysisPage() {
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-3xl px-4 py-12">
-        <div className="mb-8 flex items-start justify-between">
+        <div className="mb-8 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Your Behavior Analysis</h1>
             <p className="mt-1 text-sm text-gray-500">
               Based on your uploaded transactions — not financial advice.
             </p>
           </div>
-          <a
-            href="/upload"
-            className="shrink-0 text-sm text-indigo-600 hover:text-indigo-500 underline"
-          >
-            ← Back
-          </a>
+          <div className="no-print shrink-0 flex items-center gap-3">
+            <button
+              onClick={handleShare}
+              disabled={shareStatus === "copying"}
+              className="text-sm px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              {shareStatus === "copying" ? "Saving…" : shareStatus === "copied" ? "Link copied!" : shareStatus === "error" ? "Failed" : "Share report"}
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="text-sm px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Save as PDF
+            </button>
+            <a
+              href="/upload"
+              className="text-sm text-indigo-600 hover:text-indigo-500 underline"
+            >
+              ← Back
+            </a>
+          </div>
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-200">

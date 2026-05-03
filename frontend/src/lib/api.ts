@@ -1,5 +1,6 @@
 import { IngestResponse, ManualEntryPayload, NormalizedTransaction } from "@/types/transaction";
 import { AnalysisResult } from "@/types/analysis";
+import { SavedReport, SaveReportRequest } from "@/types/report";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -54,6 +55,20 @@ export async function postInsights(result: AnalysisResult): Promise<{ insight: s
     body: JSON.stringify(result),
   });
   return handleResponse<{ insight: string }>(res);
+}
+
+export async function saveReport(body: SaveReportRequest): Promise<{ id: string; url: string }> {
+  const res = await fetch(`${BASE}/report/save`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return handleResponse<{ id: string; url: string }>(res);
+}
+
+export async function getReport(id: string): Promise<SavedReport> {
+  const res = await fetch(`${BASE}/report/${id}`);
+  return handleResponse<SavedReport>(res);
 }
 
 export async function healthCheck(): Promise<{ status: string }> {
