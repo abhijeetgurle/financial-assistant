@@ -4,6 +4,7 @@ import { AnalysisResult, BehaviorFlag } from "@/types/analysis";
 
 interface Props {
   result: AnalysisResult;
+  insight?: string | null; // undefined = unavailable/error; null = loading
 }
 
 function StatCard({
@@ -68,7 +69,7 @@ function fmtPct(v: number): string {
   return `${(v * 100).toFixed(1)}%`;
 }
 
-export default function AnalysisReport({ result }: Props) {
+export default function AnalysisReport({ result, insight }: Props) {
   const { flags, metrics, suggestions } = result;
 
   const pnlPositive = metrics.realized_pnl > 0;
@@ -78,6 +79,29 @@ export default function AnalysisReport({ result }: Props) {
 
   return (
     <div className="space-y-8">
+      {/* AI Insight */}
+      {insight !== undefined && (
+        <section>
+          <h2 className="mb-3 text-xs font-semibold text-gray-500 uppercase tracking-widest">
+            AI Insight
+          </h2>
+          <div className="rounded-lg border border-violet-200 bg-violet-50 p-4">
+            {insight === null ? (
+              <div className="space-y-2 animate-pulse">
+                <div className="h-3 bg-violet-200 rounded w-full" />
+                <div className="h-3 bg-violet-200 rounded w-5/6" />
+                <div className="h-3 bg-violet-200 rounded w-4/6" />
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-violet-900 whitespace-pre-line leading-relaxed">{insight}</p>
+                <p className="mt-3 text-xs text-violet-400">Powered by Claude</p>
+              </>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Portfolio Summary */}
       <section>
         <h2 className="mb-3 text-xs font-semibold text-gray-500 uppercase tracking-widest">

@@ -4,16 +4,19 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IngestResponse } from "@/types/transaction";
 import { AnalysisResult } from "@/types/analysis";
-import { postAnalyze, ApiError } from "@/lib/api";
+import { postAnalyze, postInsights, ApiError } from "@/lib/api";
 import AnalysisReport from "@/components/AnalysisReport";
 
 type Status = "loading" | "success" | "error";
+type InsightStatus = "loading" | "ready" | "unavailable";
 
 export default function AnalysisPage() {
   const router = useRouter();
   const [status, setStatus] = useState<Status>("loading");
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [insight, setInsight] = useState<string | null>(null);
+  const [insightStatus, setInsightStatus] = useState<InsightStatus>("loading");
 
   useEffect(() => {
     const raw = sessionStorage.getItem("transactions");
@@ -34,6 +37,12 @@ export default function AnalysisPage() {
       .then((data) => {
         setResult(data);
         setStatus("success");
+        postInsights(data)
+          .then((r) => {
+            setInsight(r.insight);
+            setInsightStatus("ready");
+          })
+          .catch(() => setInsightStatus("unavailable"));
       })
       .catch((e) => {
         setErrorMsg(e instanceof ApiError ? e.message : "Analysis failed. Please try again.");
@@ -81,7 +90,12 @@ export default function AnalysisPage() {
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-200">
-          {result && <AnalysisReport result={result} />}
+          {result && (
+            <AnalysisReport
+              result={result}
+              insight={insightStatus === "unavailable" ? undefined : insight}
+            />
+          )}
         </div>
       </div>
     </main>

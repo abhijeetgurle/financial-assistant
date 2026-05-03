@@ -47,6 +47,15 @@ export async function postAnalyze(transactions: NormalizedTransaction[]): Promis
   return handleResponse<AnalysisResult>(res);
 }
 
+export async function postInsights(result: AnalysisResult): Promise<{ insight: string }> {
+  const res = await fetch(`${BASE}/insights`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(result),
+  });
+  return handleResponse<{ insight: string }>(res);
+}
+
 export async function healthCheck(): Promise<{ status: string }> {
   const res = await fetch(`${BASE}/health`);
   return handleResponse(res);
