@@ -25,7 +25,7 @@ Upload your Zerodha tradebook and get:
 | Frontend | Next.js 16 (TypeScript, Tailwind CSS) |
 | Backend | FastAPI (Python 3.11+) |
 | Data processing | pandas |
-| AI insights | Claude API (coming in Phase 3) |
+| AI insights | Claude API (claude-haiku-4-5) |
 
 ---
 
@@ -42,6 +42,7 @@ Upload your Zerodha tradebook and get:
 cd backend
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
+cp .env.example .env          # then fill in ANTHROPIC_API_KEY
 venv/bin/uvicorn main:app --reload
 ```
 
@@ -89,6 +90,7 @@ Enter individual trades directly — symbol, type (buy/sell), price, quantity, a
 | `POST` | `/ingest/csv` | Upload Zerodha tradebook CSV |
 | `POST` | `/ingest/manual` | Submit a single transaction as JSON |
 | `POST` | `/analyze` | Analyze a list of `NormalizedTransaction` objects |
+| `POST` | `/insights` | Generate Claude AI behavioral insight from `AnalysisResult` |
 
 Both ingest endpoints return the same `IngestResponse` shape:
 
@@ -129,6 +131,26 @@ The `/analyze` endpoint accepts the `transactions` array from `IngestResponse` a
 }
 ```
 
+The `/insights` endpoint accepts the full `AnalysisResult` and returns a 150–220 word behavioral coaching narrative:
+
+```json
+{
+  "insight": "Your trading history reveals a recurring pattern of loss aversion..."
+}
+```
+
+Returns `503` if `ANTHROPIC_API_KEY` is not configured. The frontend renders this section above the stat cards with a loading skeleton while Claude responds, and hides it entirely on error.
+
+---
+
+## Environment Variables
+
+| File | Variable | Purpose |
+|---|---|---|
+| `backend/.env` | `CORS_ORIGINS` | Comma-separated allowed origins (default: `http://localhost:3000`) |
+| `backend/.env` | `ANTHROPIC_API_KEY` | Required for `/insights` — get one at console.anthropic.com |
+| `frontend/.env.local` | `NEXT_PUBLIC_API_URL` | Backend base URL (default: `http://localhost:8000`) |
+
 ---
 
 ## Behavior Analysis Rules
@@ -157,11 +179,13 @@ financial-assistant/
 │       │   └── analysis.py        # BehaviorFlag, PortfolioMetrics, AnalysisResult
 │       ├── routers/
 │       │   ├── ingest.py          # /ingest/csv and /ingest/manual
-│       │   └── analyze.py         # /analyze
+│       │   ├── analyze.py         # /analyze
+│       │   └── insights.py        # /insights
 │       └── services/
 │           ├── csv_parser.py      # Zerodha tradebook CSV parser
 │           ├── normalizer.py      # FIFO gain/loss matching
-│           └── analyzer.py        # Rule-based behavior analysis engine
+│           ├── analyzer.py        # Rule-based behavior analysis engine
+│           └── insights.py        # Claude API call + prompt formatting
 └── frontend/
     └── src/
         ├── app/
@@ -180,5 +204,5 @@ financial-assistant/
 
 - [x] Phase 1 — Data ingestion (Zerodha CSV + manual entry, FIFO normalization)
 - [x] Phase 2 — Rule-based behavior analysis engine
-- [ ] Phase 3 — Claude API integration for plain-language insights
+- [x] Phase 3 — Claude API integration for plain-language insights
 - [ ] Phase 4 — Analysis report UI and shareable results
