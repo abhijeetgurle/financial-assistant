@@ -223,3 +223,17 @@ financial-assistant/
 - [x] Phase 2 — Rule-based behavior analysis engine
 - [x] Phase 3 — Claude API integration for plain-language insights
 - [x] Phase 4 — Analysis report UI and shareable results
+- [ ] Phase 5 — Mutual fund ingestion (Zerodha Coin transaction statement CSV)
+  - Parse Coin CSV: fund name, transaction type (Purchase / Redemption / Switch / Dividend), units, NAV, date
+  - FIFO unit matching on redemptions → compute gain/loss and holding days per unit lot
+  - Normalize into a shared `NormalizedTransaction` schema alongside equity trades
+- [ ] Phase 6 — MF behavioral analysis
+  - **SIP discipline** — detect SIP pauses/cancellations during market drawdowns (panic stopping)
+  - **Return chasing** — flag funds purchased shortly after their 1-year peak NAV
+  - **Over-diversification** — flag portfolios with >5 funds in the same Morningstar category
+  - **Frequent switching** — detect Switch Out → Switch In patterns within 90 days
+  - Claude AI narrative adjusted to include MF-specific psychological patterns
+- [ ] Phase 7 — Unified equity + mutual fund portfolio view
+  - Combined asset allocation breakdown (equity direct vs MF equity vs debt MF)
+  - Single behavioral score across both equity and MF trading history
+  - Shareable report covers both asset classes
